@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RELAY — AI Voice Agent + Human Handoff</title>
+  <style>
+    :root {
+      --bg: #0a0f1a;
+      --bg-2: #111827;
+      --panel: rgba(17, 24, 39, 0.9);
+      --panel-strong: #10192a;
+      --line: rgba(148, 163, 184, 0.18);
+      --text: #ebf1ff;
+      --muted: #98a7c5;
+      --brand: #7c9cff;
+      --brand-2: #5eead4;
+      --warning: #fbbf24;
+      --danger: #f87171;
+      --success: #34d399;
+      --shadow: 0 18px 50px rgba(15, 23, 42, 0.45);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Inter, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(124, 156, 255, 0.18), transparent 30%),
+        radial-gradient(circle at bottom right, rgba(94, 234, 212, 0.12), transparent 28%),
+        var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    .page {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 30px 20px 48px;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 22px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--text);
+    }
+
+    .brand-mark {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--brand), var(--brand-2));
+      box-shadow: 0 0 24px rgba(124, 156, 255, 0.8);
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid var(--line);
+      background: rgba(15, 23, 42, 0.7);
+      border-radius: 999px;
+      padding: 8px 12px;
+      color: var(--muted);
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 22px;
+      margin-bottom: 26px;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .voice-panel {
+      padding: 22px;
+    }
+
+    .status-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+
+    h1 {
+      font-size: clamp(2rem, 4vw, 3.2rem);
+      margin: 8px 0 12px;
+      line-height: 1.08;
+      letter-spacing: -0.05em;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 1rem;
+      margin: 0 0 20px;
+      max-width: 62ch;
+      line-height: 1.6;
+    }
+
+    .cta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    button {
+      border: none;
+      background: linear-gradient(135deg, var(--brand), #8b5cf6);
+      color: white;
+      padding: 12px 18px;
+      border-radius: 12px;
+      font-size: 0.96rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.2s ease, opacity 0.2s ease;
+    }
+
+    button:hover { transform: translateY(-1px); }
+
+    button.secondary {
+      background: rgba(124, 156, 255, 0.14);
+      color: var(--text);
+      border: 1px solid rgba(124, 156, 255, 0.28);
+    }
+
+    button.danger {
+      background: linear-gradient(135deg, #ea580c, #ef4444);
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      border: 1px solid transparent;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text);
+      background: rgba(148, 163, 184, 0.14);
+      border-color: rgba(148, 163, 184, 0.2);
+    }
+
+    .status-badge::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--muted);
+      display: inline-block;
+    }
+
+    .status-badge.listening::before { background: var(--success); }
+    .status-badge.speaking::before { background: var(--brand); }
+    .status-badge.interrupted::before { background: var(--danger); }
+    .status-badge.idle::before { background: var(--warning); }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 24px;
+    }
+
+    .metric-box {
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 16px;
+    }
+
+    .metric-label {
+      color: var(--muted);
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .metric-value {
+      margin-top: 10px;
+      font-size: 1.5rem;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+    }
+
+    .context-panel {
+      padding: 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .context-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .context-header h2,
+    .panel-section h3 {
+      margin: 0;
+      font-size: 0.92rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+    }
+
+    .case-card {
+      background: linear-gradient(180deg, rgba(17, 24, 39, 0.9), rgba(15, 23, 42, 0.95));
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 16px;
+    }
+
+    .case-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px 16px;
+      margin-top: 14px;
+    }
+
+    .kv {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .kv .label {
+      color: var(--muted);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .kv .value {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .trace-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .trace-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid var(--line);
+      padding: 10px 12px;
+      border-radius: 12px;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .trace-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--success);
+      box-shadow: 0 0 18px rgba(52, 211, 153, 0.6);
+    }
+
+    .panel-section {
+      margin-top: 18px;
+      padding: 22px;
+    }
+
+    .transcript-shell {
+      background: rgba(11, 18, 30, 0.9);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 14px;
+      min-height: 280px;
+      max-height: 380px;
+      overflow-y: auto;
+    }
+
+    .message {
+      display: flex;
+      gap: 10px;
+      padding: 8px 10px;
+      border-radius: 12px;
+      margin-bottom: 8px;
+      font-size: 0.96rem;
+      line-height: 1.5;
+      background: rgba(148, 163, 184, 0.05);
+      border: 1px solid transparent;
+    }
+
+    .message.user {
+      background: rgba(59, 130, 246, 0.1);
+      border-color: rgba(59, 130, 246, 0.2);
+    }
+
+    .message.agent {
+      background: rgba(52, 211, 153, 0.08);
+      border-color: rgba(52, 211, 153, 0.2);
+    }
+
+    .message.system {
+      background: rgba(245, 158, 11, 0.08);
+      border-color: rgba(245, 158, 11, 0.2);
+    }
+
+    .message .role {
+      min-width: 76px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-size: 10px;
+      color: var(--muted);
+      padding-top: 2px;
+    }
+
+    .message .text {
+      color: var(--text);
+      width: 100%;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      margin-top: 18px;
+    }
+
+    .handoff-box {
+      background: rgba(11, 18, 30, 0.8);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 18px;
+      max-height: 500px;
+      overflow: auto;
+    }
+
+    .handoff-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+    }
+
+    .handoff-row:last-child { border-bottom: none; }
+
+    .handoff-row .label {
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .handoff-row .value {
+      font-weight: 700;
+      text-align: right;
+    }
+
+    .demo-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 92px;
+      background: rgba(11, 18, 30, 0.9);
+      color: var(--text);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px 14px;
+      resize: vertical;
+      font: inherit;
+    }
+
+    .muted { color: var(--muted); }
+
+    .mic-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      margin-top: 14px;
+      min-width: 180px;
+      max-width: 260px;
+      box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.08), 0 0 10px rgba(15, 23, 42, 0.2);
+    }
+
+    .mic-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #64748b;
+      box-shadow: 0 0 0 rgba(0,0,0,0);
+      transition: transform 0.12s ease, background 0.12s ease, box-shadow 0.12s ease;
+      flex-shrink: 0;
+    }
+
+    .mic-dot.active {
+      background: #22c55e;
+      box-shadow: 0 0 14px rgba(34, 197, 94, 0.9), 0 0 24px rgba(34, 197, 94, 0.8);
+      animation: micPulse 0.7s ease-in-out infinite alternate;
+    }
+
+    @keyframes micPulse {
+      from {
+        transform: scale(1);
+        filter: brightness(1);
+      }
+      to {
+        transform: scale(1.45);
+        filter: brightness(1.35);
+      }
+    }
+
+    .mic-meter {
+      position: relative;
+      width: 100%;
+      height: 8px;
+      background: rgba(148, 163, 184, 0.18);
+      border-radius: 999px;
+      overflow: hidden;
+      min-width: 90px;
+      box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.08);
+    }
+
+    .mic-meter-fill {
+      display: block;
+      height: 100%;
+      width: 8%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #22c55e, #38bdf8, #facc15);
+      box-shadow: 0 0 12px rgba(34, 197, 94, 0.45);
+      transition: width 0.08s linear;
+    }
+
+    @media (max-width: 980px) {
+      .hero, .grid-2 { grid-template-columns: 1fr; }
+      .metrics { grid-template-columns: 1fr; }
+      .topbar { align-items: flex-start; flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark"></span>
+        <span>RELAY</span>
+      </div>
+      <div class="pill">AI acts. Humans take over when it matters.</div>
+    </header>
+
+    <main class="hero">
+      <section class="panel voice-panel">
+        <div class="status-bar">
+          <div>
+            <div class="pill">Live Voice Agent</div>
+          </div>
+          <span id="statusBadge" class="status-badge idle">Idle</span>
+        </div>
+
+        <h1>Interruptible voice support for real customer problems.</h1>
+        <p class="subtitle">
+          RELAY listens naturally in Hinglish, understands interruption, updates the current context, and prepares a complete handoff before human support takes over.
+        </p>
+
+        <div class="cta-row">
+          <button id="connectBtn">Connect mic</button>
+          <button class="secondary" id="demoTrigger">Load demo scenario</button>
+          <button class="danger" id="escalateBtn">Escalate to human</button>
+        </div>
+
+        <div class="mic-indicator" aria-live="polite">
+          <span class="mic-dot" id="micDot"></span>
+          <div class="mic-meter">
+            <span class="mic-meter-fill" id="micMeterFill"></span>
+          </div>
+          <span id="micLabel">Mic idle</span>
+        </div>
+
+        <div class="metrics">
+          <div class="metric-box">
+            <div class="metric-label">Customer</div>
+            <div class="metric-value" id="customerValue">Aarav</div>
+          </div>
+          <div class="metric-box">
+            <div class="metric-label">Session</div>
+            <div class="metric-value" id="orderValue">demo-session-001</div>
+          </div>
+          <div class="metric-box">
+            <div class="metric-label">Issue</div>
+            <div class="metric-value" id="issueValue">Account access</div>
+          </div>
+        </div>
+      </section>
+
+      <aside class="panel context-panel">
+        <div class="context-header">
+          <h2>Agent trace</h2>
+          <span class="pill">Live</span>
+        </div>
+
+        <div class="case-card">
+          <div class="case-grid">
+            <div class="kv">
+              <span class="label">Language</span>
+              <span class="value" id="langValue">Hinglish</span>
+            </div>
+            <div class="kv">
+              <span class="label">Intent</span>
+              <span class="value" id="intentValue">Account issue</span>
+            </div>
+            <div class="kv">
+              <span class="label">Problem</span>
+              <span class="value" id="amountValue">Login blocked</span>
+            </div>
+            <div class="kv">
+              <span class="label">Risk</span>
+              <span class="value" id="riskValue">Medium</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="trace-list" id="traceList">
+          <div class="trace-item"><span class="trace-dot"></span> Listening</div>
+          <div class="trace-item"><span class="trace-dot"></span> Understanding</div>
+          <div class="trace-item"><span class="trace-dot"></span> Tool call</div>
+          <div class="trace-item"><span class="trace-dot"></span> Responding</div>
+        </div>
+      </aside>
+    </main>
+
+    <section class="panel panel-section">
+      <h3>Conversation transcript</h3>
+      <div class="transcript-shell" id="transcriptShell"></div>
+    </section>
+
+    <div class="grid-2">
+      <section class="panel panel-section">
+        <h3>Demo controls</h3>
+        <div class="demo-actions">
+          <button class="secondary" id="simulateInterrupt">Simulate interruption</button>
+          <button class="secondary" id="simulateDuplicate">Refresh context</button>
+        </div>
+        <div class="demo-actions">
+          <button id="quickCustomerPrompt">Customer: “Wait, actually my account is locked”</button>
+        </div>
+        <textarea id="customPrompt" aria-label="Custom prompt">You are RELAY, a multilingual support assistant. Keep replies short and helpful. If the user interrupts or asks for human support, update context and escalate properly.</textarea>
+      </section>
+
+      <section class="panel panel-section">
+        <h3>Human handoff packet</h3>
+        <div class="handoff-box" id="handoffBox"></div>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    const SAMPLE_RATE = 24000;
+    let ws = null;
+    let audioCtx = null;
+    let workletNode = null;
+    let micStream = null;
+    let micAnalyser = null;
+    let playbackTime = 0;
+    let scheduledSources = [];
+    let connected = false;
+    let micMeterFrame = null;
+    let useBackendVoicePath = true;
+    let isVoiceRequestInFlight = false;
+    let lastVoiceRequestAt = 0;
+    let voiceActive = false;
+    let voiceActivityStart = 0;
+    let voiceActivitySamples = 0;
+    let pendingAudioBuffer = null;
+
+    const state = {
+      customerName: '',
+      sessionId: 'demo-session-001',
+      intent: 'support_help_request',
+      issue: '',
+      language: 'hinglish',
+      escalationReason: 'user_requested_human_support',
+    };
+
+    const statusBadge = document.getElementById('statusBadge');
+    const transcriptShell = document.getElementById('transcriptShell');
+    const handoffBox = document.getElementById('handoffBox');
+    const connectBtn = document.getElementById('connectBtn');
+    const demoTrigger = document.getElementById('demoTrigger');
+    const simulateInterrupt = document.getElementById('simulateInterrupt');
+    const simulateDuplicate = document.getElementById('simulateDuplicate');
+    const quickCustomerPrompt = document.getElementById('quickCustomerPrompt');
+    const customPrompt = document.getElementById('customPrompt');
+    const escalateBtn = document.getElementById('escalateBtn');
+    const micDot = document.getElementById('micDot');
+    const micMeterFill = document.getElementById('micMeterFill');
+    const micLabel = document.getElementById('micLabel');
+
+    function setStatus(text, cls) {
+      statusBadge.textContent = text;
+      statusBadge.className = 'status-badge ' + (cls || 'idle');
+    }
+
+    function updateMicMeterLevel(level) {
+      const safeLevel = Math.max(0, Math.min(100, level || 0));
+      micMeterFill.style.width = `${safeLevel}%`;
+      const hasVoice = safeLevel > 18;
+      if (hasVoice) {
+        micDot.classList.add('active');
+        micDot.style.transform = `scale(${1 + safeLevel / 120})`;
+        micLabel.textContent = connected ? 'Mic live' : 'Mic active';
+      } else {
+        micDot.classList.remove('active');
+        micDot.style.transform = 'scale(1)';
+        micLabel.textContent = connected ? 'Mic listening' : 'Mic idle';
+      }
+    }
+
+    function startMicMeter() {
+      if (!audioCtx || !micAnalyser) return;
+
+      const buffer = new Uint8Array(micAnalyser.fftSize);
+      const tick = () => {
+        if (!connected || !micAnalyser) return;
+        micAnalyser.getByteTimeDomainData(buffer);
+        let peak = 0;
+        for (let i = 0; i < buffer.length; i++) {
+          const sample = buffer[i] - 128;
+          const magnitude = Math.abs(sample);
+          if (magnitude > peak) peak = magnitude;
+        }
+        const level = (peak / 128) * 100;
+        updateMicMeterLevel(level * 1.8);
+        micMeterFrame = requestAnimationFrame(tick);
+      };
+      cancelAnimationFrame(micMeterFrame);
+      micMeterFrame = requestAnimationFrame(tick);
+    }
+
+    function addMessage(role, text) {
+      const row = document.createElement('div');
+      row.className = `message ${role}`;
+      row.innerHTML = `
+        <div class="role">${role}</div>
+        <div class="text">${text}</div>
+      `;
+      transcriptShell.appendChild(row);
+      transcriptShell.scrollTop = transcriptShell.scrollHeight;
+    }
+
+    function detectLanguage(text) {
+      const value = (text || '').toLowerCase();
+      if (!value) return 'hinglish';
+      const hindiWords = ['namaste', 'hello', 'hindi', 'main', 'aap', 'kya', 'hai', 'problem', 'account', 'samajh', 'bataiye', 'koshish', 'kaise', 'nahi', 'karna', 'hoga', 'aapka', 'meri'];
+      const englishWords = ['hello', 'hi', 'i', 'my', 'the', 'please', 'help', 'issue', 'account', 'login', 'password', 'error', 'can', 'cannot', 'need', 'problem', 'thank', 'please'];
+      const hindiHits = hindiWords.filter((word) => value.includes(word)).length;
+      const englishHits = englishWords.filter((word) => value.includes(word)).length;
+      if (hindiHits > englishHits && hindiHits >= 1) return 'hindi';
+      if (englishHits > 0 && hindiHits > 0) return 'hinglish';
+      if (englishHits > 0) return 'english';
+      return 'hinglish';
+    }
+
+    function buildSessionPrompt(language, customText) {
+      const base = customText || 'You are RELAY, a multilingual support assistant. Keep replies short and helpful. If the user interrupts or asks for human support, update context and escalate properly.';
+      if (language === 'english') {
+        return `${base} Respond in English only. Use clear short answers. Keep the conversation natural and professional.`;
+      }
+      if (language === 'hindi') {
+        return `${base} Respond in Hindi only. Use natural Hindi and keep answers concise.`;
+      }
+      return `${base} Respond in Hinglish, mixing natural Hindi and English based on the user’s tone. Keep replies short and easy to understand.`;
+    }
+
+    function renderHandoff(data) {
+      const rows = [
+        ['Customer', data.customer_name || state.customerName],
+        ['Session', data.session_id || state.sessionId],
+        ['Language', data.language || state.language],
+        ['Intent', data.intent || state.intent],
+        ['Issue', data.issue || state.issue],
+        ['Actions', (data.actions_taken || []).join(', ')],
+        ['Escalation', data.escalation_reason || state.escalationReason],
+        ['Summary', data.summary || data.conversation_summary || 'Context preserved and human handoff ready.'],
+      ];
+
+      handoffBox.innerHTML = rows.map(([label, value]) => `
+        <div class="handoff-row">
+          <div class="label">${label}</div>
+          <div class="value">${value}</div>
+        </div>
+      `).join('');
+    }
+
+    async function refreshScenario() {
+      const sessionResponse = await fetch('/api/session');
+      const sessionData = await sessionResponse.json();
+      const session = sessionData.session || {};
+
+      document.getElementById('customerValue').textContent = session.customer_name || 'Not yet provided';
+      document.getElementById('orderValue').textContent = session.session_id || 'demo-session-001';
+      document.getElementById('issueValue').textContent = session.current_issue || 'Not yet provided';
+      document.getElementById('langValue').textContent = session.language || 'hinglish';
+      document.getElementById('intentValue').textContent = session.current_intent || 'support_help_request';
+      document.getElementById('amountValue').textContent = session.current_issue || 'Not yet provided';
+      document.getElementById('riskValue').textContent = session.escalation_requested ? 'High' : 'Medium';
+
+      const handoffResponse = await fetch('/api/session/handoff');
+      const handoffData = await handoffResponse.json();
+      renderHandoff(handoffData.handoff || {});
+      addMessage('system', `Session loaded: ${session.session_id || 'demo-session-001'} | issue: ${session.current_issue || 'account access'}.`);
+    }
+
+    async function escalateToHuman() {
+      const response = await fetch('/api/session/escalate?reason=user_requested_human_support', { method: 'POST' });
+      const result = await response.json();
+      renderHandoff(result.handoff || {});
+      addMessage('system', 'Human escalation prepared. The handoff summary is ready for takeover.');
+      setStatus('Human ready', 'listening');
+    }
+
+    async function simulateRestartContext() {
+      await fetch('/api/session/interruption', { method: 'POST' });
+      addMessage('system', 'Interruption handled: current context updated and replay state preserved.');
+      setStatus('Context updated', 'interrupted');
+      setTimeout(() => setStatus('Listening', 'listening'), 900);
+    }
+
+    connectBtn.addEventListener('click', async () => {
+      if (connected) {
+        disconnect();
+        return;
+      }
+      await connect();
+    });
+
+    demoTrigger.addEventListener('click', refreshScenario);
+    simulateInterrupt.addEventListener('click', simulateRestartContext);
+    simulateDuplicate.addEventListener('click', refreshScenario);
+    quickCustomerPrompt.addEventListener('click', () => {
+      addMessage('user', 'Wait, actually my account is locked. I want to speak to a human.');
+      setStatus('Listening', 'listening');
+    });
+    escalateBtn.addEventListener('click', escalateToHuman);
+
+    async function connect() {
+      try {
+        micStream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+            channelCount: 1,
+          },
+        });
+
+        audioCtx = new AudioContext({ sampleRate: SAMPLE_RATE });
+        await audioCtx.audioWorklet.addModule('/static/pcm-processor.js');
+
+        micAnalyser = audioCtx.createAnalyser();
+        micAnalyser.fftSize = 256;
+        micAnalyser.smoothingTimeConstant = 0.2;
+
+        const source = audioCtx.createMediaStreamSource(micStream);
+        workletNode = new AudioWorkletNode(audioCtx, 'pcm-processor');
+        source.connect(micAnalyser);
+        source.connect(workletNode);
+
+        connected = true;
+        connectBtn.textContent = 'Disconnect mic';
+        setStatus('Listening', 'listening');
+        startMicMeter();
+
+        workletNode.port.onmessage = async (event) => {
+          if (!event || !event.data) return;
+          if (event.data.byteLength < 256) return;
+
+          const bytes = new Uint8Array(event.data);
+          let energy = 0;
+          for (let i = 0; i < bytes.length; i += 2) {
+            const sample = bytes[i] | (bytes[i + 1] << 8);
+            energy += Math.abs(sample);
+          }
+
+          const voiceLevel = energy / Math.max(1, bytes.length / 2);
+          const now = Date.now();
+
+          if (voiceLevel > 120) {
+            if (!voiceActive) {
+              voiceActive = true;
+              voiceActivityStart = now;
+              voiceActivitySamples = 0;
+              pendingAudioBuffer = event.data;
+            } else {
+              pendingAudioBuffer = event.data;
+              voiceActivitySamples += 1;
+            }
+          } else if (voiceActive) {
+            const activeFor = now - voiceActivityStart;
+            if (activeFor > 400 && voiceActivitySamples > 0 && !isVoiceRequestInFlight && now - lastVoiceRequestAt > 1200) {
+              sendVoiceTurn(pendingAudioBuffer || event.data);
+            }
+            voiceActive = false;
+            voiceActivitySamples = 0;
+            pendingAudioBuffer = null;
+          }
+        };
+
+        addMessage('system', 'Backend-controlled voice route is active. Mic audio is being sent to the session-aware reply pipeline.');
+        addMessage('agent', 'Hi, I’m RELAY. Tell me the issue and I’ll keep the context updated.');
+        refreshScenario();
+      } catch (error) {
+        console.error(error);
+        addMessage('system', `Connection failed: ${error.message}`);
+      }
+    }
+
+    function disconnect() {
+      cancelAnimationFrame(micMeterFrame);
+      micMeterFrame = null;
+      updateMicMeterLevel(0);
+      micLabel.textContent = 'Mic idle';
+      if (ws) { ws.close(); ws = null; }
+      if (workletNode) { workletNode.disconnect(); workletNode = null; }
+      if (micStream) {
+        micStream.getTracks().forEach((track) => track.stop());
+        micStream = null;
+      }
+      if (audioCtx) {
+        audioCtx.close();
+        audioCtx = null;
+      }
+      micAnalyser = null;
+      connected = false;
+      connectBtn.textContent = 'Connect mic';
+      setStatus('Idle', 'idle');
+    }
+
+    async function sendVoiceTurn(audioData) {
+      if (!audioData || isVoiceRequestInFlight) return;
+
+      isVoiceRequestInFlight = true;
+      lastVoiceRequestAt = Date.now();
+
+      try {
+        const audioPayload = arrayBufferToBase64(audioData);
+        const textPayload = (customPrompt.value || '').trim() || 'User speaking...';
+
+        const response = await fetch('/api/voice/transcribe-and-reply', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            audio: audioPayload,
+            text: textPayload,
+            session_id: state.sessionId,
+          }),
+        });
+
+        if (!response.ok) {
+          const rawText = await response.text();
+          throw new Error(`HTTP ${response.status}: ${rawText || 'backend error'}`);
+        }
+
+        const data = await response.json();
+        if (data.error) throw new Error(data.error);
+        if (data.reply) addMessage('agent', data.reply);
+        if (data.audio) {
+          setStatus('Speaking', 'speaking');
+          playPCM(data.audio);
+        }
+      } catch (error) {
+        console.error('Backend voice route failed', error);
+        addMessage('system', `Backend voice route failed: ${error.message || error}. The UI is still showing the live session state.`);
+      } finally {
+        isVoiceRequestInFlight = false;
+        voiceActive = false;
+        voiceActivitySamples = 0;
+        pendingAudioBuffer = null;
+      }
+    }
+
+    function handleServerEvent(msg) {
+      switch (msg.type) {
+        case 'session.ready':
+          addMessage('system', `Session ready. session_id=${msg.session_id || 'n/a'}`);
+          break;
+        case 'transcript.user.delta':
+          addMessage('user', msg.transcript || msg.text || '...');
+          break;
+        case 'transcript.user':
+          addMessage('user', msg.transcript || msg.text || '');
+          break;
+        case 'transcript.agent':
+          addMessage('agent', msg.transcript || msg.text || '');
+          break;
+        case 'input.speech.started':
+          addMessage('system', 'User started speaking: interrupting AI response and re-listening.');
+          flushPlayback();
+          setStatus('Interrupted', 'interrupted');
+          break;
+        case 'input.speech.stopped':
+          setStatus('Listening', 'listening');
+          break;
+        case 'reply.audio':
+          setStatus('Speaking', 'speaking');
+          playPCM(msg.audio);
+          break;
+        case 'reply.done':
+          if (msg.status === 'interrupted') {
+            addMessage('system', 'Barge-in detected: reply interrupted and context updated.');
+            flushPlayback();
+            setStatus('Interrupted', 'interrupted');
+            setTimeout(() => setStatus('Listening', 'listening'), 900);
+          } else {
+            setStatus('Listening', 'listening');
+          }
+          break;
+        case 'session.error':
+          addMessage('system', `Session error: ${JSON.stringify(msg)}`);
+          break;
+        default:
+          if (msg.type) {
+            addMessage('system', `${msg.type}: ${JSON.stringify(msg).slice(0, 180)}`);
+          }
+      }
+    }
+
+    function flushPlayback() {
+      for (const src of scheduledSources) {
+        try { src.stop(); } catch (error) { /* no-op */ }
+      }
+      scheduledSources = [];
+      playbackTime = audioCtx ? audioCtx.currentTime : 0;
+    }
+
+    function playPCM(payload) {
+      if (!audioCtx || !payload) return;
+
+      let bytes;
+      const value = String(payload).trim();
+      const looksLikeHex = /^[0-9a-fA-F]+$/.test(value);
+
+      if (looksLikeHex) {
+        const pairs = value.match(/.{1,2}/g) || [];
+        bytes = new Uint8Array(pairs.map((pair) => parseInt(pair, 16)));
+      } else {
+        bytes = Uint8Array.from(atob(value), (c) => c.charCodeAt(0));
+      }
+
+      const int16 = new Int16Array(bytes.buffer, bytes.byteOffset, bytes.byteLength / 2);
+      const float = new Float32Array(int16.length);
+      for (let i = 0; i < int16.length; i++) float[i] = int16[i] / 0x8000;
+
+      const buffer = audioCtx.createBuffer(1, float.length, SAMPLE_RATE);
+      buffer.getChannelData(0).set(float);
+
+      const source = audioCtx.createBufferSource();
+      source.buffer = buffer;
+      source.connect(audioCtx.destination);
+
+      const now = audioCtx.currentTime;
+      if (playbackTime < now) playbackTime = now;
+      source.start(playbackTime);
+      playbackTime += buffer.duration;
+      scheduledSources.push(source);
+    }
+
+    function arrayBufferToBase64(buffer) {
+      let binary = '';
+      const bytes = new Uint8Array(buffer);
+      for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+      return btoa(binary);
+    }
+
+    addMessage('system', 'RELAY loaded. Connect the microphone to begin the live demo.');
+    refreshScenario().catch((error) => console.error(error));
+  </script>
+</body>
+</html>
